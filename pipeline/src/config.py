@@ -23,9 +23,9 @@ def _require(name: str) -> str:
     return value
 
 
-# Supabase Postgres connection string (transaction pooler, port 6543).
-# Format: postgresql://postgres.PROJECTREF:PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres
-DATABASE_URL: str = _require("DATABASE_URL")
+# Supabase PostgREST API (HTTPS, no direct Postgres connection needed).
+SUPABASE_URL: str = "https://pylevbfvcrmzralattmx.supabase.co"
+SUPABASE_SERVICE_ROLE_KEY: str = _require("service_role")
 
 # Phase 1 ingestion scope (per HN feed). Top + new + best, deduped across feeds.
 HN_FEEDS: tuple[str, ...] = ("topstories", "newstories", "beststories")

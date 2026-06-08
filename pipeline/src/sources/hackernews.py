@@ -25,24 +25,36 @@ class HackerNewsSource:
 
     async def fetch(self) -> list[Article]:
         sem = asyncio.Semaphore(HN_CONCURRENCY)
+        print("[hackernews] starting fetch...", flush=True)
 
         async with httpx.AsyncClient(timeout=30) as client:
             # 1. Grab item IDs from each feed, dedupe across feeds.
             unique_ids: set[int] = set()
             for feed in HN_FEEDS:
+                print(f"[hackernews] fetching {feed}...", flush=True)
                 resp = await client.get(f"{_BASE}/{feed}.json")
                 resp.raise_for_status()
                 ids: list[int] = resp.json()
                 unique_ids.update(ids[:HN_LIMIT_PER_FEED])
+                print(f"[hackernews] {feed}: got {len(ids)} ids", flush=True)
+
+            print(f"[hackernews] {len(unique_ids)} unique items to fetch", flush=True)
 
             # 2. Fan out item fetches.
+            done = 0
+
             async def _fetch_item(item_id: int) -> Article | None:
+                nonlocal done
                 async with sem:
                     try:
                         r = await client.get(f"{_BASE}/item/{item_id}.json")
                         r.raise_for_status()
                     except httpx.HTTPError:
                         return None
+                    finally:
+                        done += 1
+                        if done % 25 == 0:
+                            print(f"[hackernews] fetched {done}/{len(unique_ids)} items", flush=True)
                     data = r.json()
                     if data is None or data.get("type") != "story":
                         return None
@@ -52,6 +64,7 @@ class HackerNewsSource:
                 *(_fetch_item(i) for i in unique_ids)
             )
 
+        print(f"[hackernews] fetch complete", flush=True)
         return [a for a in results if a is not None]
 
 

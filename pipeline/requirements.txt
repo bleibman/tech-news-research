@@ -1,4 +1,4 @@
 # Phase 1 — ingestion + storage
 httpx>=0.27          # async HTTP client for HN fan-out
-psycopg[binary]>=3.2 # direct Postgres (Supabase)
+# PostgREST via httpx — no direct Postgres driver needed
 python-dotenv>=1.0   # load .env locally

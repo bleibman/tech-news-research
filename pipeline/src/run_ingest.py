@@ -29,15 +29,14 @@ async def gather_articles() -> list[Article]:
 
 
 def main() -> None:
+    print("Starting ingestion...", flush=True)
     articles = asyncio.run(gather_articles())
     if not articles:
         print("No articles fetched; nothing to write.")
         return
+    print(f"Upserting {len(articles)} articles to Supabase...", flush=True)
     stats = upsert_articles(articles)
-    print(
-        f"Wrote to DB: {stats['inserted']} inserted, "
-        f"{stats['updated']} updated ({len(articles)} total)."
-    )
+    print(f"Wrote to DB: {stats['upserted']} upserted ({len(articles)} total).")
 
 
 if __name__ == "__main__":
