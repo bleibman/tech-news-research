@@ -31,3 +31,18 @@ SUPABASE_SERVICE_ROLE_KEY: str = _require("service_role")
 HN_FEEDS: tuple[str, ...] = ("topstories", "newstories", "beststories")
 HN_LIMIT_PER_FEED: int = 60   # cap per feed before dedupe; ~150 unique after overlap
 HN_CONCURRENCY: int = 20      # simultaneous item fetches
+
+# Phase 2 — RSS feeds.  Each tuple is (short_name, feed_url).
+RSS_FEEDS: list[tuple[str, str]] = [
+    ("arstechnica", "https://feeds.arstechnica.com/arstechnica/index"),
+    ("theverge", "https://www.theverge.com/rss/index.xml"),
+    ("techcrunch", "https://techcrunch.com/feed/"),
+]
+
+# Phase 2 — full-text extraction settings.
+EXTRACT_CONCURRENCY: int = 5     # polite — hitting real publisher servers
+EXTRACT_DELAY: float = 0.5       # seconds between requests per worker
+EXTRACT_USER_AGENT: str = (
+    "tech-news-research/0.1 (https://github.com/bleibman/tech-news-research; "
+    "educational project; polite crawler)"
+)

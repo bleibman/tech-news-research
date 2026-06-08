@@ -55,12 +55,46 @@ def upsert_articles(articles: Sequence[Article]) -> dict[str, int]:
     rows = [_article_to_row(art) for art in articles]
 
     # PostgREST accepts bulk upsert as a JSON array.
+    # Explicit on_conflict tells PostgREST which unique constraint to use
+    # (required when the table has more than one unique/pk constraint).
     resp = httpx.post(
         f"{_REST_URL}/articles",
         headers=_HEADERS,
+        params={"on_conflict": "source,external_id"},
         json=rows,
         timeout=30.0,
     )
     resp.raise_for_status()
 
     return {"upserted": len(resp.json())}
+
+
+def fetch_articles_missing_text() -> list[dict]:
+    """Return lightweight dicts for articles that have a URL but no raw_text.
+
+    Used by the extraction pass to know which articles still need body text.
+    """
+    resp = httpx.get(
+        f"{_REST_URL}/articles",
+        headers=_HEADERS,
+        params={
+            "raw_text": "is.null",
+            "url": "not.is.null",
+            "select": "id,url,source",
+        },
+        timeout=30.0,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def update_article_text(article_id: int, raw_text: str) -> None:
+    """Set the raw_text for a single article by its DB id."""
+    resp = httpx.patch(
+        f"{_REST_URL}/articles",
+        headers=_HEADERS,
+        params={"id": f"eq.{article_id}"},
+        json={"raw_text": raw_text},
+        timeout=30.0,
+    )
+    resp.raise_for_status()

@@ -2,3 +2,7 @@
 httpx>=0.27          # async HTTP client for HN fan-out
 # PostgREST via httpx — no direct Postgres driver needed
 python-dotenv>=1.0   # load .env locally
+
+# Phase 2 — RSS sources + full-text extraction
+feedparser>=6.0      # RSS/Atom feed parsing
+trafilatura>=1.6     # full-text extraction from web pages
