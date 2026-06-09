@@ -46,3 +46,12 @@ EXTRACT_USER_AGENT: str = (
     "tech-news-research/0.1 (https://github.com/bleibman/tech-news-research; "
     "educational project; polite crawler)"
 )
+
+# Phase 3 — embedding + chunking
+EMBED_MODEL: str = "BAAI/bge-base-en-v1.5"       # pinned — changing = re-embed everything
+EMBED_DIMENSION: int = 768
+CHUNK_MAX_TOKENS: int = 480                        # ceiling under BGE's 512 limit
+CHUNK_OVERLAP_TOKENS: int = 60
+CHUNK_MIN_TOKENS: int = 200                        # don't split anything shorter than this
+BGE_QUERY_PREFIX: str = "Represent this sentence for searching relevant passages: "
+EMBED_BATCH_SIZE: int = 32                         # sentences per encode() call

@@ -2,9 +2,9 @@
 
 ## Current Status
 
-**Phase:** Phase 2 complete (RSS sources + full-text extraction)
-**Branch:** `phase-2`
-**Last milestone:** Phase 2 — RSS feeds (Ars Technica, The Verge, TechCrunch) + trafilatura extraction pass.
+**Phase:** Phase 3 complete (embeddings + chunking + semantic retrieval)
+**Branch:** merging `phase-3` → `main`
+**Last milestone:** Phase 3 — BGE embeddings, token-aware chunking, pgvector retrieval. 459 articles embedded.
 
 ## What's Done
 
@@ -16,16 +16,23 @@
 - [x] Phase 2: Per-source error isolation (one source failing doesn't crash the pipeline)
 - [x] Phase 2: DB helpers for extraction (fetch_articles_missing_text, update_article_text)
 
+- [x] Phase 3: Token-aware chunking (paragraph → sentence → word boundaries, 480-token ceiling, 60-token overlap)
+- [x] Phase 3: BGE-base embeddings via sentence-transformers (CPU, lazy-loaded singleton)
+- [x] Phase 3: chunks table in Supabase with pgvector (768-dim), match_chunks RPC for cosine similarity search
+- [x] Phase 3: Embedding pass integrated into run_ingest.py (chunk → embed → insert, idempotent via already-embedded check)
+- [x] Phase 3: Semantic retrieval tested end-to-end (test_retrieval.py)
+- [x] Phase 3: Fixed infinite loop bug in chunk_text overlap logic
+
 ## Deferred
 
 - **arXiv source** — deferred to a later phase. Hard rate limit (1 req / 3 sec, single connection) makes it a poor fit for the current batch model. Will revisit when the pipeline is more mature.
+- **Render cron job** — deferred until synthesis/digest is working. No point running a nightly cron until the pipeline produces something consumable.
 
-## What's Next (Phase 3)
+## What's Next (Phase 4)
 
-1. **Embeddings** — `BAAI/bge-base-en-v1.5` (768-dim), CPU inference via sentence-transformers
-2. **chunks table** — `vector(768)` column in Supabase (pgvector)
-3. **Chunking strategy** — split raw_text into ~512-token passages
-4. **Retrieval** — cosine similarity search over pgvector
+1. **LLM synthesis** — Claude API for generating answers from retrieved chunks
+2. **Citation discipline** — responses must cite source articles
+3. **Retrieval + synthesis pipeline** — query → embed → search → synthesize with citations
 
 ## Key Technical Notes
 
@@ -34,8 +41,10 @@
 - **Secrets in:** `pipeline/.env` — `service_role` (Supabase JWT), `hugging_face_token` (not needed until Phase 4)
 - **Virtualenv:** `pipeline/.venv` (Python 3.13)
 - **Upsert dedupe key:** `(source, external_id)` — makes re-runs idempotent
-- **Embedding model (Phase 3):** locked to `BAAI/bge-base-en-v1.5` (768-dim). Changing later = re-embed everything.
+- **Embedding model:** locked to `BAAI/bge-base-en-v1.5` (768-dim). Changing later = re-embed everything.
 - **BGE query prefix:** `"Represent this sentence for searching relevant passages: "` on queries only, NOT on stored documents
+- **Chunking:** 480-token ceiling, 60-token overlap, paragraph → sentence → word split hierarchy
+- **Chunks DB:** `chunks` table with `vector(768)`, `match_chunks` RPC for cosine similarity search
 - **Build plan location:** `/Users/brandonleibman/Downloads/BUILD_PLAN_2.md`
 - **Extraction:** trafilatura for body text, httpx for fetching. Best-effort — failures are logged and skipped.
 - **Politeness:** 5 concurrent extractors, 0.5s delay between requests, descriptive User-Agent.
@@ -54,7 +63,7 @@
 |-------|------|--------|
 | 1 | HN ingestion + Article model + upsert | Done |
 | 2 | RSS sources + trafilatura extraction | Done |
-| 3 | Embeddings + pgvector retrieval (BGE-base, 768-dim) | Planned |
+| 3 | Embeddings + pgvector retrieval (BGE-base, 768-dim) | Done |
 | 4 | LLM synthesis with citation discipline | Planned |
 | 5 | Digest generation (Render cron overnight) | Planned |
 | 6 | Chat UI (FastAPI + Next.js) | Planned |
@@ -65,3 +74,4 @@
 
 - **2025-06-08:** Read BUILD_PLAN_2.md, confirmed Phase 1 complete with data ingested, created memory.md, starting Phase 2.
 - **2026-06-08:** Phase 2 implemented — RSS sources (3 feeds), trafilatura extraction pass, per-source error handling. arXiv deferred.
+- **2026-06-09:** Phase 3 implemented — token-aware chunking, BGE embeddings, pgvector retrieval. Fixed infinite loop in chunk overlap logic. Full pipeline run: 459 articles embedded, semantic search verified.

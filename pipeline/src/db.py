@@ -98,3 +98,102 @@ def update_article_text(article_id: int, raw_text: str) -> None:
         timeout=30.0,
     )
     resp.raise_for_status()
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 — chunks + retrieval
+# ---------------------------------------------------------------------------
+
+def fetch_articles_with_text() -> list[dict]:
+    """Return articles that have raw_text populated (candidates for embedding).
+
+    Selects only the columns needed by the embedding pass.
+    """
+    resp = httpx.get(
+        f"{_REST_URL}/articles",
+        headers=_HEADERS,
+        params={
+            "raw_text": "not.is.null",
+            "select": "id,title,url,source,raw_text",
+        },
+        timeout=30.0,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def fetch_article_ids_with_chunks() -> set[int]:
+    """Return the set of article IDs that already have rows in the chunks table.
+
+    Used to skip re-embedding articles on subsequent runs.
+    """
+    resp = httpx.get(
+        f"{_REST_URL}/chunks",
+        headers=_HEADERS,
+        params={"select": "article_id"},
+        timeout=30.0,
+    )
+    resp.raise_for_status()
+    return {row["article_id"] for row in resp.json()}
+
+
+def insert_chunks(chunks: list[dict]) -> int:
+    """Batch-insert chunk rows into the chunks table.
+
+    Each dict must have: article_id, chunk_index, chunk_text, embedding.
+    The embedding is a plain list[float] — PostgREST/pgvector handles the
+    conversion to the vector type.
+
+    Returns the number of rows inserted.
+    """
+    if not chunks:
+        return 0
+
+    # Use plain-insert headers (no resolution=merge-duplicates, which is
+    # only valid for upserts with on_conflict).
+    headers = {
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
+    }
+
+    # PostgREST expects the embedding as a JSON string like "[0.1,0.2,...]"
+    # for vector columns — convert list[float] to string.
+    rows = []
+    for c in chunks:
+        row = dict(c)
+        row["embedding"] = str(c["embedding"])
+        rows.append(row)
+
+    resp = httpx.post(
+        f"{_REST_URL}/chunks",
+        headers=headers,
+        json=rows,
+        timeout=60.0,
+    )
+    if resp.status_code >= 400:
+        print(f"[db] insert_chunks error: {resp.text[:500]}", flush=True)
+    resp.raise_for_status()
+    return len(resp.json())
+
+
+def search_chunks(
+    query_embedding: list[float], top_k: int = 10
+) -> list[dict]:
+    """Semantic search via the match_chunks RPC function.
+
+    Returns up to *top_k* chunk dicts with a ``similarity`` score, ordered by
+    descending similarity.
+    """
+    resp = httpx.post(
+        f"{_REST_URL}/rpc/match_chunks",
+        headers=_HEADERS,
+        json={
+            "query_embedding": query_embedding,
+            "match_count": top_k,
+        },
+        timeout=30.0,
+    )
+    resp.raise_for_status()
+    return resp.json()

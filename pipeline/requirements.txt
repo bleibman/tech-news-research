@@ -6,3 +6,6 @@ python-dotenv>=1.0   # load .env locally
 # Phase 2 — RSS sources + full-text extraction
 feedparser>=6.0      # RSS/Atom feed parsing
 trafilatura>=1.6     # full-text extraction from web pages
+
+# Phase 3 — embeddings + chunking + retrieval
+sentence-transformers>=2.7   # BGE-base embeddings (CPU)
