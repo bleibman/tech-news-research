@@ -13,6 +13,7 @@ import asyncio
 
 from .config import RSS_FEEDS
 from .db import upsert_articles
+from .embed import run_embedding
 from .extract import run_extraction
 from .models import Article
 from .sources.hackernews import HackerNewsSource
@@ -54,6 +55,14 @@ async def _run() -> None:
     print(
         f"Extraction complete: {ext_stats['extracted']} extracted, "
         f"{ext_stats['failed']} failed, {ext_stats['total']} total."
+    )
+
+    # Phase 3: embed articles that have text but no chunks yet.
+    print("\nStarting embedding pass...", flush=True)
+    emb_stats = run_embedding()
+    print(
+        f"Embedding complete: {emb_stats['embedded']} embedded, "
+        f"{emb_stats['skipped']} skipped, {emb_stats['total']} total."
     )
 
 
