@@ -37,14 +37,14 @@ export default async function DigestDatePage({
     <div>
       <Link
         href="/digest"
-        className="mb-4 inline-block text-sm text-blue-600 hover:underline dark:text-blue-400"
+        className="font-accent mb-4 inline-block text-sm text-accent transition hover:text-accent-hover"
       >
-        &larr; All digests
+        &larr; all digests
       </Link>
-      <p className="mb-1 text-sm text-gray-500 dark:text-gray-400">
+      <p className="font-accent mb-1 text-sm text-text-secondary">
         {formatted}
       </p>
-      <h1 className="mb-6 text-2xl font-bold tracking-tight">
+      <h1 className="mb-6 text-2xl font-bold tracking-tight text-foreground">
         {digest.title}
       </h1>
       <DigestContent markdown={digest.content_md} />

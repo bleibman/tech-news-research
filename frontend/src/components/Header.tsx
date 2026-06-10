@@ -2,24 +2,25 @@ import Link from "next/link";
 
 export default function Header() {
   return (
-    <header className="border-b border-gray-200 dark:border-gray-800">
-      <nav className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
+    <header className="border-b border-border">
+      <nav className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
         <Link
           href="/"
-          className="text-lg font-semibold tracking-tight hover:opacity-80"
+          className="font-accent text-lg font-semibold tracking-tight text-foreground hover:text-accent-hover transition"
         >
-          Tech News Research
+          tech-news
         </Link>
-        <div className="flex gap-6 text-sm font-medium">
+        <div className="flex items-center gap-1 text-sm font-medium">
           <Link
             href="/digest"
-            className="hover:text-blue-600 dark:hover:text-blue-400"
+            className="rounded-md px-3 py-1.5 text-text-secondary transition hover:bg-surface hover:text-foreground"
           >
             Digest
           </Link>
+          <span className="text-border">/</span>
           <Link
             href="/chat"
-            className="hover:text-blue-600 dark:hover:text-blue-400"
+            className="rounded-md px-3 py-1.5 text-text-secondary transition hover:bg-surface hover:text-foreground"
           >
             Chat
           </Link>

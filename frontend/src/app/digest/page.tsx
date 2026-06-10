@@ -12,9 +12,11 @@ export default async function DigestsPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold tracking-tight">Daily Digests</h1>
+      <h1 className="mb-6 text-2xl font-bold tracking-tight text-foreground">
+        Daily Digests
+      </h1>
       {digests.length === 0 ? (
-        <p className="text-gray-500 dark:text-gray-400">
+        <p className="text-text-secondary">
           No digests yet. Run the ingestion pipeline to generate one.
         </p>
       ) : (

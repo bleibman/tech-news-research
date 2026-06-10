@@ -10,10 +10,10 @@ export default function DigestCard({ digest }: { digest: DigestSummary }) {
   return (
     <Link
       href={`/digest/${digest.digest_date}`}
-      className="block rounded-lg border border-gray-200 p-4 transition hover:border-blue-400 hover:bg-gray-50 dark:border-gray-800 dark:hover:border-blue-600 dark:hover:bg-gray-900"
+      className="block rounded-lg border border-border bg-surface p-4 transition hover:border-accent"
     >
-      <p className="text-sm text-gray-500 dark:text-gray-400">{formatted}</p>
-      <h2 className="mt-1 font-medium">{digest.title}</h2>
+      <p className="font-accent text-xs text-text-secondary">{formatted}</p>
+      <h2 className="mt-1.5 font-medium text-foreground">{digest.title}</h2>
     </Link>
   );
 }
