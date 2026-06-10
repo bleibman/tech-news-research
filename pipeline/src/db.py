@@ -12,6 +12,8 @@ from collections.abc import Sequence
 
 import httpx
 
+import json
+
 from .config import SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 from .models import Article
 
@@ -197,3 +199,83 @@ def search_chunks(
     )
     resp.raise_for_status()
     return resp.json()
+
+
+# ---------------------------------------------------------------------------
+# Phase 5 — digest generation
+# ---------------------------------------------------------------------------
+
+def fetch_hn_articles_recent(hours: int = 48) -> list[dict]:
+    """Fetch recent HN articles with body text, ordered by score descending."""
+    from datetime import datetime, timedelta, timezone
+
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+    resp = httpx.get(
+        f"{_REST_URL}/articles",
+        headers=_HEADERS,
+        params={
+            "source": "eq.hackernews",
+            "published_at": f"gte.{cutoff}",
+            "raw_text": "not.is.null",
+            "select": "id,title,url,author,score,num_comments,published_at,raw_text",
+            "order": "score.desc.nullslast",
+        },
+        timeout=120.0,  # large payload — full raw_text for ~200 articles
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def fetch_chunk_embeddings_for_articles(article_ids: list[int]) -> dict[int, list[float]]:
+    """Fetch chunk_index=0 embeddings for a list of article IDs.
+
+    Returns {article_id: embedding_vector}.
+    """
+    if not article_ids:
+        return {}
+
+    ids_str = ",".join(str(i) for i in article_ids)
+    resp = httpx.get(
+        f"{_REST_URL}/chunks",
+        headers=_HEADERS,
+        params={
+            "article_id": f"in.({ids_str})",
+            "chunk_index": "eq.0",
+            "select": "article_id,embedding",
+        },
+        timeout=30.0,
+    )
+    resp.raise_for_status()
+
+    result = {}
+    for row in resp.json():
+        emb = row.get("embedding")
+        if emb is None:
+            continue
+        if isinstance(emb, str):
+            emb = json.loads(emb)
+        result[row["article_id"]] = emb
+    return result
+
+
+def upsert_digest(
+    digest_date: str,
+    title: str,
+    content_md: str,
+    citations: list[dict] | None = None,
+) -> None:
+    """Insert or update a digest row keyed by digest_date."""
+    row = {
+        "digest_date": digest_date,
+        "title": title,
+        "content_md": content_md,
+        "citations": citations or [],
+    }
+    resp = httpx.post(
+        f"{_REST_URL}/digests",
+        headers=_HEADERS,
+        params={"on_conflict": "digest_date"},
+        json=row,
+        timeout=30.0,
+    )
+    resp.raise_for_status()

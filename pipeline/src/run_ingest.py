@@ -65,6 +65,20 @@ async def _run() -> None:
         f"{emb_stats['skipped']} skipped, {emb_stats['total']} total."
     )
 
+    # Phase 5: generate the daily digest.
+    from .digest import generate_digest
+
+    print("\nStarting digest generation...", flush=True)
+    try:
+        digest_stats = generate_digest()
+        print(
+            f"Digest complete: {digest_stats['stories']} stories "
+            f"({digest_stats['candidates']} candidates, "
+            f"{digest_stats['deduped']} deduped) for {digest_stats['date']}."
+        )
+    except Exception as exc:
+        print(f"Digest generation FAILED: {exc} — pipeline continues.", flush=True)
+
 
 def main() -> None:
     asyncio.run(_run())

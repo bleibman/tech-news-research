@@ -61,3 +61,15 @@ Heavy work runs overnight and writes finished digests to DB. The morning browse 
 - **Secrets**: `pipeline/.env` (never committed). Required: `service_role` (Supabase JWT). Future: `hugging_face_token`.
 - **Supabase project**: `pylevbfvcrmzralattmx`
 - **Git remote**: `https://github.com/bleibman/tech-news-research.git`
+
+## Git Corruption Recovery
+
+If git operations fail with SIGBUS (signal 10) or `pack-objects died` errors, the `.git` object database has corrupted objects (likely from filesystem-level issues). Do NOT attempt `git repack`, `git format-patch`, or `git gc` on the corrupted repo — `pack-objects` walks the full history graph and will crash on any corrupt ancestor.
+
+**Fix procedure:**
+1. `git clone <remote-url> /tmp/tech-news-fresh` — fresh clone from GitHub
+2. `rsync -av --exclude='.git' ./ /tmp/tech-news-fresh/` — copy working tree into fresh clone
+3. `cd /tmp/tech-news-fresh && git add -A && git commit && git push origin main` — commit and push
+4. Back in original repo: `rm -rf .git && cp -R /tmp/tech-news-fresh/.git .` — replace corrupted .git
+5. `git fsck --full && git gc --prune=now` — verify integrity
+6. `rm -rf /tmp/tech-news-fresh` — clean up
