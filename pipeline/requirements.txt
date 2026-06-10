@@ -9,3 +9,6 @@ trafilatura>=1.6     # full-text extraction from web pages
 
 # Phase 3 — embeddings + chunking + retrieval
 sentence-transformers>=2.7   # BGE-base embeddings (CPU)
+
+# Phase 4 — LLM synthesis
+huggingface-hub>=0.23        # InferenceClient for Llama via HF Inference API

@@ -55,3 +55,11 @@ CHUNK_OVERLAP_TOKENS: int = 60
 CHUNK_MIN_TOKENS: int = 200                        # don't split anything shorter than this
 BGE_QUERY_PREFIX: str = "Represent this sentence for searching relevant passages: "
 EMBED_BATCH_SIZE: int = 32                         # sentences per encode() call
+
+# Phase 4 — LLM synthesis (HuggingFace Inference API)
+HF_TOKEN: str = os.environ.get("HF_TOKEN", "")     # validated lazily in synthesize.py
+SYNTHESIS_MODEL: str = "meta-llama/Llama-3.1-70B-Instruct"
+SYNTHESIS_FALLBACK_MODEL: str = "meta-llama/Llama-3.1-8B-Instruct"
+SYNTHESIS_MAX_OUTPUT_TOKENS: int = 1024
+SYNTHESIS_TOP_K: int = 8
+SYNTHESIS_TEMPERATURE: float = 0.1
