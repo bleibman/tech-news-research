@@ -12,3 +12,7 @@ sentence-transformers>=2.7   # BGE-base embeddings (CPU)
 
 # Phase 4 — LLM synthesis
 huggingface-hub>=0.23        # InferenceClient for Llama via HF Inference API
+
+# Phase 6 — FastAPI web service
+fastapi>=0.111               # API framework for digest browse + chat Q&A
+uvicorn[standard]>=0.30      # ASGI server

@@ -4,20 +4,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Tech news RAG (Retrieval-Augmented Generation) research tool that ingests articles from multiple sources, embeds them, and serves both a pre-generated morning digest and live Q&A — "one engine, two front doors." Currently in early phases (ingestion built, extraction/embedding/synthesis ahead).
+Tech news RAG (Retrieval-Augmented Generation) research tool that ingests articles from multiple sources, embeds them, and serves both a pre-generated morning digest and live Q&A — "one engine, two front doors." Phases 1–6 complete: ingestion, extraction, embeddings, synthesis, digest generation, and chat interface.
 
 ## Commands
 
-All commands run from `pipeline/`:
+Pipeline commands run from `pipeline/`:
 
 ```bash
 source .venv/bin/activate              # Python 3.13 virtualenv
 python3 -m src.run_ingest              # Run full ingestion pipeline
 python3 test_db.py                     # Quick PostgREST connectivity check
 pip install -r requirements.txt        # Install dependencies
+uvicorn api.main:app --reload --port 8000  # Start FastAPI dev server
 ```
 
-No test framework, linter, or build system is configured yet.
+Frontend commands run from `frontend/`:
+
+```bash
+npm install                            # Install dependencies
+npm run dev                            # Start Next.js dev server (port 3000)
+npm run build                          # Production build
+```
+
+No test framework or linter is configured yet.
 
 ## Architecture
 
@@ -33,17 +42,41 @@ Entry point is `run_ingest.py` which iterates over registered `SOURCES`, calls `
 
 **Config** (`config.py`): Loads `.env` via python-dotenv. The `service_role` env var is required (Supabase service role JWT). Supabase project URL is hardcoded.
 
+### FastAPI Web Service (`pipeline/api/`)
+
+Serves two "front doors" to the same RAG engine:
+
+- **`/digests`** — Browse pre-generated daily digests (server-rendered in Next.js)
+- **`/ask`** — Live Q&A: embed query → retrieve chunks → synthesize cited answer
+
+**Key design**: Uses HF Inference API for query embedding (`embed_api.py`) instead of local sentence-transformers, keeping RAM under 512 MB for Render's cheap tier. The overnight cron job continues using the CPU model.
+
+**`main.py`**: FastAPI app with CORS middleware. Origins from `ALLOWED_ORIGINS` env var.
+**`routes_digests.py`**: `GET /digests` (list) and `GET /digests/{date}` (full content) via PostgREST.
+**`routes_ask.py`**: `POST /ask` — async embed → threaded search + synthesize. Reuses `src.synthesize.synthesize()`.
+**`embed_api.py`**: `embed_query_api()` — async HF Inference API call for BGE query embeddings.
+
+### Next.js Frontend (`frontend/`)
+
+App Router, TypeScript, Tailwind CSS. Three routes:
+
+- `/` — Landing page with links to digest and chat
+- `/digest` — List of recent digests (server component)
+- `/digest/[date]` — Single digest rendered as markdown
+- `/chat` — Interactive Q&A (client component)
+
+Communicates with FastAPI via `NEXT_PUBLIC_API_URL` env var.
+
 ### Database (Supabase)
 
 - **`articles` table**: unique constraint on `(source, external_id)`, columns match `Article` dataclass fields plus auto `fetched_at`
-- **Future**: `chunks` table with `vector(768)` column (pgvector, Phase 3), `digests` table (Phase 5)
+- **`chunks` table**: `vector(768)` column (pgvector), linked to articles
+- **`digests` table**: keyed by `digest_date`, stores `content_md` and `citations`
 - Schema is managed via Supabase dashboard SQL Editor, not migration files in this repo
 
-### Planned Architecture (BUILD_PLAN_2.md)
+### Architecture Overview
 
-Phases build incrementally: HN ingestion (done) → RSS + full-text extraction → embeddings + retrieval → LLM synthesis → digest generation (Render cron) → chat UI (FastAPI + Next.js) → agentic web search.
-
-Heavy work runs overnight and writes finished digests to DB. The morning browse reads pre-generated content. The chat path reuses retrieval + synthesis with on-demand LLM calls.
+Heavy work runs overnight (Render cron): ingest → extract → embed → generate digest. The morning browse reads pre-generated digests. The chat path reuses retrieval + synthesis with on-demand LLM calls via the FastAPI service.
 
 ## Key Design Decisions
 
@@ -51,16 +84,18 @@ Heavy work runs overnight and writes finished digests to DB. The morning browse 
 - **Idempotent upserts**: The nightly cron model depends on safe re-runs. Partial failures self-heal next run. HN scores refresh on re-ingest.
 - **Per-source failure isolation**: One source failing must not crash the pipeline. Wrap each `fetch()` so failures log and yield empty lists.
 - **Embedding model locked to `BAAI/bge-base-en-v1.5` (768-dim)**: Changing model or dimension later means re-embedding everything + altering the column. BGE requires query prefix `"Represent this sentence for searching relevant passages: "` but no prefix on stored documents.
-- **CPU embeddings, not HF API**: Free and sufficient for overnight batch where latency doesn't matter.
+- **CPU embeddings for batch, HF API for live queries**: Overnight cron uses local sentence-transformers (free, no RAM pressure). The FastAPI web service uses HF Inference API to stay under 512 MB RAM on Render's cheap tier.
 - **Source quality > model quality**: ~80% of output quality comes from sources + retrieval, not the synthesis model.
 
 ## Environment
 
 - **Python**: 3.13
 - **Virtualenv**: `pipeline/.venv`
-- **Secrets**: `pipeline/.env` (never committed). Required: `service_role` (Supabase JWT). Future: `hugging_face_token`.
+- **Secrets**: `pipeline/.env` (never committed). Required: `service_role` (Supabase JWT), `HF_TOKEN` (HuggingFace Inference API).
 - **Supabase project**: `pylevbfvcrmzralattmx`
 - **Git remote**: `https://github.com/bleibman/tech-news-research.git`
+- **FastAPI (Render)**: Web service at `pipeline/`, start: `uvicorn api.main:app --host 0.0.0.0 --port $PORT`. Env vars: `service_role`, `HF_TOKEN`, `ALLOWED_ORIGINS`.
+- **Next.js (Vercel)**: Frontend at `frontend/`. Env var: `NEXT_PUBLIC_API_URL` (FastAPI URL).
 
 ## Git Corruption Recovery
 
